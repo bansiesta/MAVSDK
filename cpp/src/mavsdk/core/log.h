@@ -9,8 +9,12 @@
 #if defined(ANDROID)
 #include <android/log.h>
 #else
-#include <iostream>
 #include <ctime>
+#if defined(WINDOWS)
+#include <iostream> // std::cerr on Windows (no fork concern)
+#else
+#include <unistd.h> // for write() — fork-safe output
+#endif
 #endif
 
 #if !defined(WINDOWS)
@@ -80,19 +84,23 @@ public:
         (void)_caller_filename;
         (void)_caller_filenumber;
 #else
+        // Build the complete log line in a stringstream, then output with a
+        // single write() call.  This avoids std::cout whose locale/codecvt
+        // internals are not safe after fork() (e.g. uvicorn --reload).
+        std::ostringstream line;
 
         switch (_log_level) {
             case log::Level::Debug:
-                set_color(Color::Green);
+                line << "\x1b[32m"; // green
                 break;
             case log::Level::Info:
-                set_color(Color::Blue);
+                line << "\x1b[34m"; // blue
                 break;
             case log::Level::Warn:
-                set_color(Color::Yellow);
+                line << "\x1b[33m"; // yellow
                 break;
             case log::Level::Err:
-                set_color(Color::Red);
+                line << "\x1b[31m"; // red
                 break;
         }
 
@@ -103,29 +111,36 @@ public:
         struct tm* timeinfo = localtime(&rawtime);
         char time_buffer[10]{}; // We need 8 characters + \0
         strftime(time_buffer, sizeof(time_buffer), "%I:%M:%S", timeinfo);
-        std::cout << "[" << time_buffer;
+        line << "[" << time_buffer;
 
         switch (_log_level) {
             case log::Level::Debug:
-                std::cout << "|Debug] ";
+                line << "|Debug] ";
                 break;
             case log::Level::Info:
-                std::cout << "|Info ] ";
+                line << "|Info ] ";
                 break;
             case log::Level::Warn:
-                std::cout << "|Warn ] ";
+                line << "|Warn ] ";
                 break;
             case log::Level::Err:
-                std::cout << "|Error] ";
+                line << "|Error] ";
                 break;
         }
 
-        set_color(Color::Reset);
+        line << "\x1b[0m"; // reset
 
-        std::cout << _s.str();
-        std::cout << " (" << _caller_filename << ":" << std::dec << _caller_filenumber << ")";
+        line << _s.str();
+        line << " (" << _caller_filename << ":" << std::dec << _caller_filenumber << ")\n";
 
-        std::cout << std::endl;
+#if defined(WINDOWS)
+        // On Windows, fall back to std::cerr (no fork concern)
+        std::cerr << line.str();
+#else
+        // POSIX write() is fork-safe (unlike std::cout whose locale internals are not)
+        std::string out = line.str();
+        auto written [[maybe_unused]] = ::write(STDOUT_FILENO, out.c_str(), out.size());
+#endif
 #endif
     }
 

@@ -1,6 +1,7 @@
 #include "log.h"
 #include "unused.h"
 
+#include <iostream>
 #include <mutex>
 
 #if defined(WINDOWS)
