@@ -52,9 +52,9 @@ TEST(SystemTest, MissionUploadCancellation)
     std::promise<Mission::Result> prom{};
     std::future<Mission::Result> fut = prom.get_future();
 
-    LogInfo() << "Starting mission upload...";
+    LogInfo("Starting mission upload...");
     mission.upload_mission_async(mission_plan, [&prom](Mission::Result result) {
-        LogInfo() << "Upload mission result: " << result;
+        LogInfo("Upload mission result: {}", result);
         prom.set_value(result);
     });
 
@@ -62,7 +62,7 @@ TEST(SystemTest, MissionUploadCancellation)
     auto future_status = fut.wait_for(std::chrono::milliseconds(100));
     EXPECT_EQ(future_status, std::future_status::timeout);
 
-    LogInfo() << "Cancelling mission upload...";
+    LogInfo("Cancelling mission upload...");
     mission.cancel_mission_upload();
 
     // Wait for cancellation to complete
@@ -70,7 +70,7 @@ TEST(SystemTest, MissionUploadCancellation)
     EXPECT_EQ(future_status, std::future_status::ready);
     auto future_result = fut.get();
     EXPECT_EQ(future_result, Mission::Result::TransferCancelled);
-    LogInfo() << "Mission upload cancelled successfully.";
+    LogInfo("Mission upload cancelled successfully.");
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
@@ -111,15 +111,15 @@ TEST(SystemTest, MissionDownloadCancellation)
         std::promise<Mission::Result> prom{};
         std::future<Mission::Result> fut = prom.get_future();
 
-        LogInfo() << "Uploading mission first...";
+        LogInfo("Uploading mission first...");
         mission.upload_mission_async(mission_plan, [&prom](Mission::Result result) {
-            LogInfo() << "Upload mission result: " << result;
+            LogInfo("Upload mission result: {}", result);
             prom.set_value(result);
         });
 
         auto future_result = fut.get();
         EXPECT_EQ(future_result, Mission::Result::Success);
-        LogInfo() << "Mission uploaded successfully.";
+        LogInfo("Mission uploaded successfully.");
     }
 
     // Now try to download and cancel
@@ -127,9 +127,9 @@ TEST(SystemTest, MissionDownloadCancellation)
         std::promise<Mission::Result> prom{};
         std::future<Mission::Result> fut = prom.get_future();
 
-        LogInfo() << "Starting mission download...";
+        LogInfo("Starting mission download...");
         mission.download_mission_async([&prom](Mission::Result result, Mission::MissionPlan) {
-            LogInfo() << "Download mission result: " << result;
+            LogInfo("Download mission result: {}", result);
             prom.set_value(result);
         });
 
@@ -137,7 +137,7 @@ TEST(SystemTest, MissionDownloadCancellation)
         auto future_status = fut.wait_for(std::chrono::milliseconds(100));
         EXPECT_EQ(future_status, std::future_status::timeout);
 
-        LogInfo() << "Cancelling mission download...";
+        LogInfo("Cancelling mission download...");
         mission.cancel_mission_download();
 
         // Wait for cancellation to complete
@@ -145,7 +145,7 @@ TEST(SystemTest, MissionDownloadCancellation)
         EXPECT_EQ(future_status, std::future_status::ready);
         auto future_result = fut.get();
         EXPECT_EQ(future_result, Mission::Result::TransferCancelled);
-        LogInfo() << "Mission download cancelled successfully.";
+        LogInfo("Mission download cancelled successfully.");
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
